@@ -16,11 +16,11 @@ Complex systems (IT servers, equipment software, industrial and semiconductor to
 - **Normalization:** every format becomes one `LogEvent` model that keeps the original line.
 - **Detection rules:** repeated authentication failures, telemetry threshold breaches, fail-then-success sequences.
 - **Statistical anomaly detection:** transparent rolling mean and standard-deviation (z-score) baseline.
-- **Event correlation:** alerts grouped into incidents by time window and source.
+- **Event correlation:** alerts grouped into incidents by a configurable time window, event type, source and triggering rule.
 - **Explainable alerts:** each alert shows the rule, observed value, threshold, severity and supporting events.
 - **Root-cause ranking:** a precedence-based ranker learns how often one event type comes before another, tolerates a configurable clock skew, and shows the top three candidates with the evidence.
 - **Incident management:** notes and status (Open, Investigating, Resolved).
-- **JavaFX dashboard:** event counts, severity chart, raw alerts vs incidents, filters, CSV export.
+- **JavaFX dashboard:** event counts, severity chart, incident summary, event timeline, raw alerts vs incidents, root-cause accuracy, filters, CSV export.
 - **SQLite persistence:** events, alerts, incidents, root-cause candidates and notes.
 - **Evaluation:** labeled synthetic datasets, precision, recall, F1, false-positive rate, alert reduction, throughput, and root-cause top-1 and top-3 accuracy at several skew levels.
 
@@ -75,7 +75,7 @@ mvn clean test
 mvn javafx:run
 ```
 
-These commands apply once the Maven project is set up in Phase 1. Sample datasets will be in `data/sample/`.
+These commands apply once the Maven project is set up in Phase 1. Sample datasets will be in `data/sample/`, and the log and CSV formats will be documented in `docs/data-formats.md`.
 
 ## Evaluation
 
@@ -90,8 +90,10 @@ Results, dataset sizes and random seeds will be recorded in `docs/evaluation.md`
 
 | Member | Area |
 | --- | --- |
-| Member 1 | Parsing, detection rules, correlation, anomaly detection, root-cause ranking, datasets, evaluation |
-| Member 2 | JavaFX UI, Spring configuration, SQLite schema and repositories, incident workflow, filters, export, packaging |
+| Member 1 (Vinuba) | Security track: application skeleton (Maven, Spring, JavaFX, SQLite), import service and auth-log parser, brute-force and fail-then-success rules, repositories, correlation engine, incident workflow, filters, CSV export, alerts-vs-incidents evaluation |
+| Member 2 | Equipment track: alarm and telemetry parsers, import screen, threshold rule, z-score detector, precedence statistics, root-cause ranker and panel, cascade generator, root-cause evaluation, dashboard, packaging |
+
+Work is split by feature track so both members build algorithm code and application code. It follows the full [Product Requirements Document](docs/PRD.md), which lists tasks, phases and checkpoints.
 
 Work uses feature branches and pull requests, with the other member reviewing every PR. `main` always builds. Never commit `*.db` files or build output.
 
