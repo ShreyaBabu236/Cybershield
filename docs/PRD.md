@@ -100,63 +100,64 @@ P0 items are the minimum demo, P1 completes the project, P2 is cut first if time
 
 | ID | Requirement | Priority | Owner |
 | --- | --- | --- | --- |
-| FR1 | Import `.log`, `.txt` and documented CSV files; skip and count malformed lines | P0 | M1 parse, M2 UI |
-| FR2 | Normalize all formats into `LogEvent`, keeping the raw line | P0 | M1 |
+| FR1 | Import `.log`, `.txt` and documented CSV files; skip and count malformed lines | P0 | M1 import service and auth-log parser; M2 alarm and telemetry parsers, import screen |
+| FR2 | Normalize all formats into `LogEvent`, keeping the raw line | P0 | Both, for their own parsers |
 | FR3 | Rule: repeated authentication failures within a time window | P0 | M1 |
-| FR4 | Rules: telemetry threshold breach; fail-then-success sequence | P1 | M1 |
+| FR4 | Rules: fail-then-success sequence; telemetry threshold breach | P1 | M1 sequence rule; M2 threshold rule |
 | FR5 | Correlate alerts by time window and source into incidents | P0 | M1 |
-| FR6 | Explainable alert: rule, observed value, threshold, severity, evidence events | P0 | M1 data, M2 display |
-| FR7 | Z-score anomaly detection on telemetry (rolling mean and std-dev) | P1 | M1 |
-| FR8 | SQLite persistence of events, alerts, incidents, root causes, notes; reload on restart | P0 | M2 |
-| FR9 | Incident details, notes and status (Open, Investigating, Resolved) | P0 | M2 |
-| FR10 | Dashboard: event count, severity chart, raw alerts vs incidents | P1 | M2 |
-| FR11 | Filters: severity, time range, event type, source, incident status | P1 | M2 |
-| FR12 | CSV export of alerts, incidents and evaluation results | P1 | M2 |
-| FR13 | Labeled synthetic dataset generator and evaluation report | P0 | M1 |
-| FR14 | Unit and integration tests; README with run steps | P0 | Both |
+| FR6 | Explainable alert: rule, observed value, threshold, severity, evidence events | P0 | M1 alerts view; M2 for telemetry and anomaly alerts |
+| FR7 | Z-score anomaly detection on telemetry (rolling mean and std-dev) | P1 | M2 |
+| FR8 | SQLite persistence: events, alerts, incidents, notes (M1); root-cause candidates (M2); reload on restart | P0 | M1 and M2 |
+| FR9 | Incident details, notes and status (Open, Investigating, Resolved) | P0 | M1 |
+| FR10 | Dashboard: event count, severity chart, raw alerts vs incidents, root-cause accuracy | P1 | M2 |
+| FR11 | Filters: severity, time range, event type, source, incident status | P1 | M1 |
+| FR12 | CSV export of alerts, incidents and evaluation results | P1 | M1 |
+| FR13 | Labeled dataset generator v1, shared evaluation metrics, alerts-vs-incidents evaluation | P0 | M1 |
+| FR14 | Unit and integration tests for own parts; README with run steps | P0 | Both |
 | FR15 | Packaged runnable build, screenshots, demo script | P2 | M2 |
-| FR16 | Documented synthetic equipment-alarm CSV format and parser (timestamp, tool, component, code, severity) | P0 | M1 |
-| FR17 | Precedence statistics with configurable clock-skew tolerance | P0 | M1 |
-| FR18 | Root-cause ranking per incident with top-3 list and explanation | P0 | M1 engine, M2 display |
-| FR19 | Cascade generator: injected root cause, downstream alarms, skew levels, separate train and test seeds | P0 | M1 |
-| FR20 | Root-cause evaluation: earliest-timestamp baseline vs ranker, top-1 and top-3 at several skew levels | P0 | M1 |
+| FR16 | Documented synthetic equipment-alarm CSV format and parser (timestamp, tool, component, code, severity) | P0 | M2 |
+| FR17 | Precedence statistics with configurable clock-skew tolerance | P0 | M2 |
+| FR18 | Root-cause ranking per incident with top-3 list, explanation and panel | P0 | M2 |
+| FR19 | Cascade generator: injected root cause, downstream alarms, skew levels, separate train and test seeds | P0 | M2 |
+| FR20 | Root-cause evaluation: earliest-timestamp baseline vs ranker, top-1 and top-3 at several skew levels | P0 | M2 |
 
 ## 5. Two-member work split
 
-Member 1 owns detection, correlation and root-cause analysis; Member 2 owns the desktop app and persistence. Work runs in seven phases (section 7); each ends with a joint checkpoint, and the next phase starts only when it passes.
+The work is split by feature track, so each member builds a mix of algorithm code and application code and carries about the same load (12 tasks each). Member 1 owns the security track, the application skeleton and persistence, correlation, the incident workflow and the alerting evaluation. Member 2 owns the equipment track, the root-cause ranker and its evaluation, the import screen, the dashboard and packaging. Work runs in seven phases (section 7); each ends with a joint checkpoint, and the next phase starts only when it passes.
 
-### Member 1: Detection and Analysis
+### Member 1: Security track, skeleton, correlation and incidents
 
 | Phase | Task | Input | Output | Depends on | Done when |
 | --- | --- | --- | --- | --- | --- |
 | 0 Contracts | Shared models and interfaces (with M2) | Section 3 contracts | Merged `model` package | None | Both compile on `main` |
-| 1 Import | Auth-log parser and equipment-alarm CSV parser | Sample files | `List<LogEvent>`, malformed count | Models | Samples parse; bad lines do not crash |
-| 2 Detection | Rules: brute force, fail-then-success, telemetry threshold | `List<LogEvent>` | `List<ThreatAlert>` with explanations | Parsers | Each rule fires on its sample |
+| 1 Import | `pom.xml`, Spring `AppConfig`, JavaFX window, SQLite connection | Dependency list | Running skeleton on `main` | Models | Window opens; `SELECT 1` logged |
+| 1 Import | `LogImportService` (NIO) and auth-log parser | Sample auth log | `List<LogEvent>`, malformed count | Models | Sample parses; bad lines counted, no crash |
+| 2 Detection | Rules: brute force and fail-then-success | `List<LogEvent>` | `List<ThreatAlert>` with explanations | Parser | Each rule fires on its sample |
+| 2 Detection | `schema.sql` and JDBC repositories for events, alerts, incidents | Model records | Repositories | Skeleton | Save and reload works |
+| 2 Detection | Alerts table showing rule, value, severity, evidence | Stored alerts | Alerts view | Repositories, rules | Selecting an alert shows why it fired |
 | 3 Correlation | `CorrelationEngine` | Alerts | `List<Incident>` | Rules | Worked example gives 1 incident |
-| 3 Correlation | Dataset generator v1 and JUnit tests for parsers, rules, correlation | Seeded generator | Labeled dataset; green `mvn test` | Correlation | Tests pass |
-| 4 Root cause | Precedence statistics with skew tolerance | Training incidents | Pair counts and probabilities | Correlation | Unit tests cover boundary and undecided pairs |
-| 4 Root cause | `RootCauseRanker` with explanation text | Incident, statistics | Ranked `RootCauseCandidate` list on each `Incident` | Statistics | Pump example ranks the pump first |
-| 4 Root cause | Cascade generator: injected root cause, skew levels, train and test seeds | Seeds, skew values | Labeled cascades | Ranker interface | Two seeds give different data |
-| 5 Evaluation | Evaluation: P/R/F1, FPR, alert reduction, throughput, top-1 and top-3 | Test dataset | Metrics report from a real run | Ranker, generator | Numbers printed and saved to CSV |
-| 5 Evaluation | Z-score `AnomalyDetector` and tests | Telemetry events | Anomaly alerts | Parser | Injected spikes flagged |
-| 6 Finalization | Method, results and limitations write-up | Evaluation output | README sections | Evaluation | Every number traces to a run |
+| 3 Correlation | Incident detail with evidence, notes and status changes | Stored incidents | Investigation UI | Repositories, correlation | Notes and status survive restart |
+| 4 Root cause | Shared evaluation metrics classes: precision, recall, F1, false-positive rate, alert reduction, throughput | Predictions and labels | Reusable `evaluation` package | Correlation | Unit tests match hand-computed values; M2 can reuse it |
+| 5 Evaluation | Dataset generator v1 and alerts-vs-incidents evaluation | Seeded generator | Metrics report from a real run | Metrics classes | Numbers printed and saved to CSV |
+| 5 Evaluation | Filters (severity, time range, type, source, status) and CSV export of alerts, incidents, evaluation results | Stored data, metrics | Filterable table; export files | Repositories, evaluation | Filters change the table; files open in a spreadsheet |
+| 6 Finalization | JUnit tests for own parts; README sections on architecture and Git workflow | Own code | Passing `mvn test`; docs | All | Tests green; fresh clone runs |
 
-### Member 2: Desktop App and Persistence
+### Member 2: Equipment track, root cause and dashboard
 
 | Phase | Task | Input | Output | Depends on | Done when |
 | --- | --- | --- | --- | --- | --- |
 | 0 Contracts | Shared models and interfaces (with M1) | Section 3 contracts | Merged `model` package | None | Both compile on `main` |
-| 1 Import | `pom.xml`, Spring `AppConfig`, JavaFX window, SQLite connection | Dependency list | Running skeleton | None | Window opens; `SELECT 1` logged |
-| 1 Import | Import screen and `LogImportService` (NIO) | File path | Events passed to parser | Parser (stub until M1 merges) | Event count shown after import |
-| 2 Detection | `schema.sql` and JDBC repositories | Model records | Event, alert, incident repositories | Models | Save and reload works |
-| 2 Detection | Alerts table with explanation | Stored alerts | Alerts view | Repositories, M1 rules | Selecting an alert shows rule, value and evidence |
-| 3 Correlation | Incident detail with evidence, notes and status changes | Stored incidents | Investigation UI | Repositories, M1 correlation | Notes and status survive restart |
-| 4 Root cause | Schema update for root-cause candidates | Incident model | New table and repository methods | Repositories | Candidates save and reload |
-| 4 Root cause | Root-cause panel: ranked top 3 with explanation | `Incident.rootCauses` | Panel in incident detail | M1 ranker | Panel shows candidates and scores |
-| 5 Evaluation | Filters: severity, time range, type, source, status | Stored data | Filterable table | Repositories | Filters change the table |
-| 5 Evaluation | Dashboard: severity chart, raw alerts vs incidents | Stored data | Charts | Repositories | Counts match the database |
-| 5 Evaluation | CSV export of alerts, incidents, evaluation results; persistence integration test | Stored data, metrics | Export files; passing test | Repositories, M1 evaluation | Files open in a spreadsheet |
-| 6 Finalization | README, packaging, screenshots, demo script | Whole project | Runnable build and docs | All | Fresh clone runs |
+| 1 Import | Equipment-alarm CSV format document, alarm parser and telemetry parser | Sample CSVs | `List<LogEvent>`, malformed count | Models | Samples parse; bad rows counted, no crash |
+| 1 Import | Import screen (file chooser, format choice, event count) | File path | Events sent to `LogImportService` | M1 skeleton (stub until merged) | Event count shown after import |
+| 2 Detection | Telemetry threshold rule | Telemetry events | `ThreatAlert` with observed value and threshold | Telemetry parser | Rule fires on injected breach |
+| 3 Anomaly | Z-score `AnomalyDetector` (rolling mean and std-dev) and tests | Telemetry events | Anomaly alerts with explanation | Telemetry parser | Injected spikes flagged |
+| 4 Root cause | Precedence statistics with skew tolerance | Training incidents | Pair counts and probabilities | M1 correlation | Unit tests cover boundary and undecided pairs |
+| 4 Root cause | `RootCauseRanker` with explanation text | Incident, statistics | Ranked `RootCauseCandidate` list on each `Incident` | Statistics | Pump example ranks the pump first |
+| 4 Root cause | Cascade generator: injected root cause, skew levels, separate train and test seeds | Seeds, skew values | Labeled cascades | Ranker interface | Two seeds give different data |
+| 4 Root cause | Schema update, repository for root-cause candidates, and root-cause panel (top 3 with scores) | Incident model | Table, repository, panel in incident detail | M1 repositories and incident detail | Candidates save, reload and display |
+| 5 Evaluation | Root-cause evaluation: baseline vs ranker, top-1 and top-3 at 0 s, 1 s, 3 s skew | Test cascades | Metrics report from a real run | Ranker, cascade generator, M1 metrics classes | Numbers printed and saved to CSV |
+| 5 Evaluation | Dashboard: severity chart, raw alerts vs incidents, root-cause accuracy | Stored data, metrics | Charts | M1 repositories, evaluation | Counts match the database |
+| 6 Finalization | JUnit tests for own parts; README method, results and limitations; packaging, screenshots, demo script | Own code, evaluation output | Passing `mvn test`; docs; runnable build | All | Every number traces to a run; fresh clone runs |
 
 ### Shared responsibilities
 
@@ -171,24 +172,27 @@ One private GitHub repo, `main` always compiles, and every change reaches `main`
 
 **Setup (Phase 0)**
 
-1. Member 2 creates the repo with `.gitignore` (`target/`, `.idea/`, `*.db`), invites Member 1, and pushes the empty Maven skeleton.
-2. Member 1 pushes `feature/models` with the shared records and interfaces; Member 2 reviews and merges it.
+1. The repo owner creates the repo with `.gitignore` (`target/`, `.idea/`, `*.db`), invites the other member, and commits the PRD and README first.
+2. One member pushes `feature/models` with the shared records and interfaces; the other member reviews and merges it.
 
 **Branches**
 
 | Branch | Owner | Contents |
 | --- | --- | --- |
-| `main` | Both | Always builds; protected, no direct pushes |
-| `feature/parsers` | M1 | Auth-log and equipment-alarm parsers, malformed-line handling |
-| `feature/rules` | M1 | Detection rules |
-| `feature/correlation` | M1 | Correlation engine, incidents |
-| `feature/precedence` | M1 | Precedence statistics and root-cause ranker |
-| `feature/anomaly-eval` | M1 | Cascade generator, evaluation, z-score detector |
-| `feature/app-skeleton` | M2 | `pom.xml`, Spring, JavaFX window, SQLite |
-| `feature/persistence` | M2 | Schema and repositories |
-| `feature/ui-import-alerts` | M2 | Import screen, alerts table, incident detail |
-| `feature/rootcause-ui` | M2 | Root-cause panel and schema update |
-| `feature/dashboard-export` | M2 | Filters, dashboard, CSV export |
+| `main` | Both | Always builds; no direct pushes after the first commits |
+| `feature/models` | Both | Shared records and interfaces (Phase 0) |
+| `feature/app-skeleton` | M1 | `pom.xml`, Spring, JavaFX window, SQLite connection |
+| `feature/auth-import` | M1 | Import service and auth-log parser |
+| `feature/auth-rules` | M1 | Brute-force and fail-then-success rules |
+| `feature/persistence` | M1 | Schema, repositories, alerts table |
+| `feature/correlation` | M1 | Correlation engine, incident detail, notes, status |
+| `feature/eval-alerts` | M1 | Metrics classes, dataset generator v1, alerts-vs-incidents evaluation, filters, export |
+| `feature/alarm-parsers` | M2 | Alarm and telemetry parsers, import screen |
+| `feature/telemetry-detection` | M2 | Threshold rule and z-score detector |
+| `feature/precedence` | M2 | Precedence statistics and root-cause ranker |
+| `feature/cascade-eval` | M2 | Cascade generator and root-cause evaluation |
+| `feature/rootcause-ui` | M2 | Root-cause repository and panel |
+| `feature/dashboard-docs` | M2 | Dashboard, README sections, packaging |
 
 **Rules**
 
