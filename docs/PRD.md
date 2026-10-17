@@ -80,7 +80,9 @@ The whole app is Java 21 and desktop-only; the UI layer never touches JDBC and t
 - `ThreatAlert` record: id, ruleName, severity, timestamp, source, explanation, evidence (list of `LogEvent`).
 - `RootCauseCandidate` record: eventType, source, score, explanation.
 - `Incident` record: id, title, severity, status, alerts, rootCauses (list of `RootCauseCandidate`), notes.
-- Interfaces: `EventParser`, `DetectionRule` (`List<ThreatAlert> evaluate(List<LogEvent>)`), `RootCauseRanker` (`List<RootCauseCandidate> rank(Incident incident)`), `EventRepository`, `AlertRepository`, `IncidentRepository`.
+- Parsing and detection interfaces: `EventParser`, `DetectionRule` (`List<ThreatAlert> evaluate(List<LogEvent>)`), `DetectionEngine`, `AnomalyDetector`.
+- Analysis and service interfaces: `CorrelationEngine` (`List<Incident> correlate(List<ThreatAlert>)`), `RootCauseRanker` (`List<RootCauseCandidate> rank(Incident incident)`), `IncidentService`.
+- Repository interfaces: `EventRepository`, `AlertRepository`, `IncidentRepository`.
 
 Base package: `com.cybermonitor` with `model`, `parser`, `detection`, `correlation`, `anomaly`, `service`, `repository.sqlite`, `evaluation`, `reporting`, `ui`, `config`, `exception`.
 
@@ -104,26 +106,37 @@ P0 items are the minimum demo, P1 completes the project, P2 is cut first if time
 | FR2 | Normalize all formats into `LogEvent`, keeping the raw line | P0 | Both, for their own parsers |
 | FR3 | Rule: repeated authentication failures within a time window | P0 | M1 |
 | FR4 | Rules: fail-then-success sequence; telemetry threshold breach | P1 | M1 sequence rule; M2 threshold rule |
-| FR5 | Correlate alerts by time window and source into incidents | P0 | M1 |
+| FR5 | Correlate alerts into incidents using a configurable time window, event type, source and triggering rule | P0 | M1 |
 | FR6 | Explainable alert: rule, observed value, threshold, severity, evidence events | P0 | M1 alerts view; M2 for telemetry and anomaly alerts |
 | FR7 | Z-score anomaly detection on telemetry (rolling mean and std-dev) | P1 | M2 |
 | FR8 | SQLite persistence: events, alerts, incidents, notes (M1); root-cause candidates (M2); reload on restart | P0 | M1 and M2 |
 | FR9 | Incident details, notes and status (Open, Investigating, Resolved) | P0 | M1 |
-| FR10 | Dashboard: event count, severity chart, raw alerts vs incidents, root-cause accuracy | P1 | M2 |
+| FR10 | Dashboard: event counts, severity chart, incident summary, event timeline, raw alerts vs incidents, root-cause accuracy | P1 | M2 |
 | FR11 | Filters: severity, time range, event type, source, incident status | P1 | M1 |
 | FR12 | CSV export of alerts, incidents and evaluation results | P1 | M1 |
 | FR13 | Labeled dataset generator v1, shared evaluation metrics, alerts-vs-incidents evaluation | P0 | M1 |
 | FR14 | Unit and integration tests for own parts; README with run steps | P0 | Both |
-| FR15 | Packaged runnable build, screenshots, demo script | P2 | M2 |
+| FR15 | Packaged runnable build, sample datasets, architecture notes, screenshots, demo script | P2 | M2 |
 | FR16 | Documented synthetic equipment-alarm CSV format and parser (timestamp, tool, component, code, severity) | P0 | M2 |
 | FR17 | Precedence statistics with configurable clock-skew tolerance | P0 | M2 |
 | FR18 | Root-cause ranking per incident with top-3 list, explanation and panel | P0 | M2 |
 | FR19 | Cascade generator: injected root cause, downstream alarms, skew levels, separate train and test seeds | P0 | M2 |
 | FR20 | Root-cause evaluation: earliest-timestamp baseline vs ranker, top-1 and top-3 at several skew levels | P0 | M2 |
 
+### Non-functional requirements
+
+- **Local only:** no network calls; all data stays on the machine. The optional `network` package is not built.
+- **Safety:** prepared statements for all SQL, transactions for multi-row saves, validated file input and clear custom exceptions in the `exception` package. A malformed line never crashes an import.
+- **Logging:** SLF4J with Logback records import counts, rules that fired and errors.
+- **Configuration:** time window, thresholds, skew tolerance and z-score window come from Spring configuration, not hard-coded values.
+- **Performance:** imports stream line by line with NIO; throughput is measured and reported, and no fixed target is promised.
+- **Maintainability:** interfaces for parsers, rules, engines and repositories; UI code separate from business logic; no dependency added without a stated purpose.
+- **Data formats:** the auth-log line format and equipment-alarm CSV columns are written in `docs/data-formats.md` in Phase 1, before parsers are coded, and both members agree on them.
+- **Documentation:** README with setup, run and test steps, architecture overview, sample datasets in `data/sample/`, a demo script, and a short technical explanation for academic evaluation and interviews.
+
 ## 5. Two-member work split
 
-The work is split by feature track, so each member builds a mix of algorithm code and application code and carries about the same load (12 tasks each). Member 1 owns the security track, the application skeleton and persistence, correlation, the incident workflow and the alerting evaluation. Member 2 owns the equipment track, the root-cause ranker and its evaluation, the import screen, the dashboard and packaging. Work runs in seven phases (section 7); each ends with a joint checkpoint, and the next phase starts only when it passes.
+The work is split by feature track, so each member builds a mix of algorithm code and application code and carries about the same load (12 tasks each). Member 1 (Vinuba, the repo owner) owns the security track, the application skeleton and persistence, correlation, the incident workflow and the alerting evaluation. Member 2 owns the equipment track, the root-cause ranker and its evaluation, the import screen, the dashboard and packaging. Work runs in seven phases (section 7); each ends with a joint checkpoint, and the next phase starts only when it passes.
 
 ### Member 1: Security track, skeleton, correlation and incidents
 
@@ -156,7 +169,7 @@ The work is split by feature track, so each member builds a mix of algorithm cod
 | 4 Root cause | Cascade generator: injected root cause, skew levels, separate train and test seeds | Seeds, skew values | Labeled cascades | Ranker interface | Two seeds give different data |
 | 4 Root cause | Schema update, repository for root-cause candidates, and root-cause panel (top 3 with scores) | Incident model | Table, repository, panel in incident detail | M1 repositories and incident detail | Candidates save, reload and display |
 | 5 Evaluation | Root-cause evaluation: baseline vs ranker, top-1 and top-3 at 0 s, 1 s, 3 s skew | Test cascades | Metrics report from a real run | Ranker, cascade generator, M1 metrics classes | Numbers printed and saved to CSV |
-| 5 Evaluation | Dashboard: severity chart, raw alerts vs incidents, root-cause accuracy | Stored data, metrics | Charts | M1 repositories, evaluation | Counts match the database |
+| 5 Evaluation | Dashboard: severity chart, incident summary, event timeline, raw alerts vs incidents, root-cause accuracy | Stored data, metrics | Charts | M1 repositories, evaluation | Counts match the database |
 | 6 Finalization | JUnit tests for own parts; README method, results and limitations; packaging, screenshots, demo script | Own code, evaluation output | Passing `mvn test`; docs; runnable build | All | Every number traces to a run; fresh clone runs |
 
 ### Shared responsibilities
