@@ -4,11 +4,14 @@ import com.cybermonitor.export.CsvExporter;
 import com.cybermonitor.parser.EventParser;
 import com.cybermonitor.service.AlertService;
 import com.cybermonitor.service.IncidentService;
+import com.cybermonitor.service.MaintenanceService;
 import com.cybermonitor.service.PipelineResult;
 import com.cybermonitor.service.PipelineService;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
@@ -33,16 +36,20 @@ public class MainWindow extends BorderPane {
     private static final Logger log = LoggerFactory.getLogger(MainWindow.class);
 
     private final PipelineService pipeline;
+    private final MaintenanceService maintenance;
     private final AlertsView alertsView;
     private final IncidentsView incidentsView;
     private final TabPane tabs = new TabPane();
     private final ComboBox<EventParser> parserBox = new ComboBox<>();
     private final Button importButton = new Button("Import file...");
+    private final Button clearButton = new Button("Clear data...");
     private final Label status = new Label();
 
     public MainWindow(PipelineService pipeline, AlertService alertService, IncidentService incidentService,
-                      CsvExporter exporter, List<EventParser> parsers, String databaseStatus) {
+                      CsvExporter exporter, List<EventParser> parsers, MaintenanceService maintenance,
+                      String databaseStatus) {
         this.pipeline = pipeline;
+        this.maintenance = maintenance;
         this.alertsView = new AlertsView(alertService, exporter);
         this.incidentsView = new IncidentsView(incidentService, exporter);
 
@@ -62,12 +69,13 @@ public class MainWindow extends BorderPane {
             }
         });
         importButton.setOnAction(e -> chooseAndImport());
+        clearButton.setOnAction(e -> confirmAndClear());
 
         Label title = new Label("CyberShield Desktop");
         title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox toolbar = new HBox(10, title, new Label("Format"), parserBox, importButton, status, spacer,
+        HBox toolbar = new HBox(10, title, new Label("Format"), parserBox, importButton, clearButton, status, spacer,
                 new Label(databaseStatus));
         toolbar.setPadding(new Insets(10));
         toolbar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
@@ -104,6 +112,25 @@ public class MainWindow extends BorderPane {
         runImport(file, parser);
     }
 
+    private void confirmAndClear() {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "Delete all events, alerts, incidents and notes? This cannot be undone.",
+                ButtonType.OK, ButtonType.CANCEL);
+        confirm.setHeaderText("Clear all data");
+        if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return;
+        }
+        try {
+            maintenance.clearAllData();
+            status.setText("All data cleared");
+            alertsView.refresh();
+            incidentsView.refresh();
+        } catch (RuntimeException e) {
+            log.error("Clearing data failed", e);
+            UiSupport.error("Cannot clear data: " + e.getMessage());
+        }
+    }
+
     private void runImport(File file, EventParser parser) {
         importButton.setDisable(true);
         status.setText("Importing " + file.getName() + "...");
@@ -117,6 +144,11 @@ public class MainWindow extends BorderPane {
             PipelineResult result = task.getValue();
             importButton.setDisable(false);
             status.setText(result.summary());
+            if (result.alreadyImported()) {
+                UiSupport.info("This file was already imported, so it was skipped.\n\n"
+                        + "Use \"Clear data...\" first if you want to import it again.");
+                return;
+            }
             alertsView.refresh();
             incidentsView.refresh();
             if (result.imported().malformedLines() > 0) {

@@ -9,11 +9,13 @@ import com.cybermonitor.model.ThreatAlert;
 import com.cybermonitor.parser.EventParser;
 import com.cybermonitor.repository.AlertRepository;
 import com.cybermonitor.repository.EventRepository;
+import com.cybermonitor.repository.ImportHistoryRepository;
 import com.cybermonitor.repository.IncidentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -36,10 +38,12 @@ public class PipelineService {
     private final CorrelationEngine correlation;
     private final IncidentRepository incidents;
     private final RootCauseRanker rootCauseRanker; // may be null
+    private final ImportHistoryRepository history;
+    private final Clock clock;
 
     public PipelineService(LogImportService importService, EventRepository events, DetectionEngine detection,
                            AlertRepository alerts, CorrelationEngine correlation, IncidentRepository incidents,
-                           RootCauseRanker rootCauseRanker) {
+                           RootCauseRanker rootCauseRanker, ImportHistoryRepository history, Clock clock) {
         this.importService = Objects.requireNonNull(importService);
         this.events = Objects.requireNonNull(events);
         this.detection = Objects.requireNonNull(detection);
@@ -47,10 +51,26 @@ public class PipelineService {
         this.correlation = Objects.requireNonNull(correlation);
         this.incidents = Objects.requireNonNull(incidents);
         this.rootCauseRanker = rootCauseRanker;
+        this.history = Objects.requireNonNull(history);
+        this.clock = Objects.requireNonNull(clock);
     }
 
+    /**
+     * Imports a file unless the same content was already imported with the same format, in which case
+     * nothing is read or saved and the result says so. The file is recorded only after everything was saved,
+     * so a failed import can be retried.
+     */
     public PipelineResult importFile(Path file, EventParser parser) {
-        return process(importService.importFile(file, parser));
+        String fingerprint = importService.fingerprint(file, parser);
+        String fileName = file.getFileName().toString();
+        if (history.contains(fingerprint)) {
+            log.info("Skipped {}: already imported", fileName);
+            return new PipelineResult(new ImportResult(fileName, 0, 0, 0, List.of(), List.of()),
+                    List.of(), List.of(), true);
+        }
+        PipelineResult result = process(importService.importFile(file, parser));
+        history.record(fingerprint, fileName, clock.instant());
+        return result;
     }
 
     public PipelineResult process(ImportResult imported) {

@@ -6,6 +6,7 @@ import com.cybermonitor.model.IncidentStatus;
 import com.cybermonitor.parser.AuthLogParser;
 import com.cybermonitor.service.AlertService;
 import com.cybermonitor.service.IncidentService;
+import com.cybermonitor.service.MaintenanceService;
 import com.cybermonitor.service.PipelineResult;
 import com.cybermonitor.service.PipelineService;
 import org.junit.jupiter.api.Test;
@@ -73,6 +74,29 @@ class PipelineIntegrationTest {
 
             // with a threshold of 20 the 8-failure burst is no longer a brute-force alert
             assertTrue(result.alerts().stream().noneMatch(a -> a.ruleName().equals("BRUTE_FORCE")));
+        }
+    }
+
+    @Test
+    void importingTheSameFileTwiceDoesNotDuplicateAndClearAllowsReimport(@TempDir Path folder) {
+        try (AnnotationConfigApplicationContext context = start(folder.resolve("it3.db"), Map.of())) {
+            PipelineService pipeline = context.getBean(PipelineService.class);
+            Path sample = Path.of("data/sample/auth_sample.log");
+
+            pipeline.importFile(sample, new AuthLogParser());
+            PipelineResult second = pipeline.importFile(sample, new AuthLogParser());
+
+            assertTrue(second.alreadyImported());
+            assertEquals(4, context.getBean(AlertService.class).listAlerts().size());
+            assertEquals(3, context.getBean(IncidentService.class).listIncidents().size());
+
+            context.getBean(MaintenanceService.class).clearAllData();
+            assertEquals(0, context.getBean(AlertService.class).listAlerts().size());
+            assertEquals(0, context.getBean(IncidentService.class).listIncidents().size());
+
+            PipelineResult again = pipeline.importFile(sample, new AuthLogParser());
+            assertTrue(!again.alreadyImported());
+            assertEquals(3, context.getBean(IncidentService.class).listIncidents().size());
         }
     }
 }

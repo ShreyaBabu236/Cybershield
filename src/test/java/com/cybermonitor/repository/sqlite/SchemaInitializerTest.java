@@ -23,7 +23,7 @@ class SchemaInitializerTest {
         List<String> statements = SchemaInitializer.readStatements();
 
         for (String table : List.of("events", "alerts", "alert_evidence", "incidents", "incident_alerts",
-                "incident_root_causes")) {
+                "incident_root_causes", "imported_files")) {
             assertTrue(statements.stream().anyMatch(s -> s.contains("CREATE TABLE IF NOT EXISTS " + table + " ")),
                     "missing table " + table);
         }

@@ -55,3 +55,10 @@ CREATE TABLE IF NOT EXISTS incident_root_causes (
     explanation  TEXT NOT NULL,
     PRIMARY KEY (incident_id, rank)
 );
+
+-- Fingerprints (SHA-256 of file content + format) of files already imported, so a file is not imported twice.
+CREATE TABLE IF NOT EXISTS imported_files (
+    fingerprint  TEXT PRIMARY KEY,
+    file_name    TEXT NOT NULL,
+    imported_at  INTEGER NOT NULL
+);

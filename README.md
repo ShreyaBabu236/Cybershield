@@ -83,6 +83,25 @@ Settings (thresholds, time windows, database path) are in `src/main/resources/cy
 
 `mvn test` runs the unit tests (parser, rules, correlation, filters, CSV export, evaluation, services), the SQLite repository tests and an end-to-end test that imports the sample file through Spring and SQLite, restarts the context, and checks that incidents, notes and status are still there.
 
+## Equipment track (Member 2)
+
+- `EquipmentAlarmCsvParser` imports equipment-alarm CSVs (choose **Equipment alarm CSV** in the format box; sample: `data/sample/equipment-alarms.csv`). The security rules do not match equipment events, so that sample gives 4 events and no alerts.
+- `TelemetryThresholdRule`, `RollingZScoreAnomalyDetector` and `PrecedenceRootCauseRanker` have **no built-in defaults**. They are created and used only when their properties are set (on the command line or in `cybershield.properties`):
+
+```text
+cybershield.telemetry.threshold
+cybershield.telemetry.comparison   (GREATER_THAN, GREATER_THAN_OR_EQUAL, LESS_THAN, LESS_THAN_OR_EQUAL)
+cybershield.telemetry.severity    (LOW, MEDIUM, HIGH, CRITICAL)
+cybershield.anomaly.window-size
+cybershield.anomaly.z-score-threshold
+cybershield.anomaly.severity
+cybershield.root-cause.skew-tolerance-seconds
+```
+
+- `SyntheticCascadeGenerator` and `RootCauseEvaluation` evaluate root-cause ranking on synthetic cascades at 0 s, 1 s and 3 s injected skew.
+- `DashboardView` and `DashboardSnapshot` are implemented and tested but are not yet shown in the main window.
+- Details: [docs/architecture.md](docs/architecture.md), [docs/demo-script.md](docs/demo-script.md).
+
 ## Evaluation
 
 The evaluation compares:

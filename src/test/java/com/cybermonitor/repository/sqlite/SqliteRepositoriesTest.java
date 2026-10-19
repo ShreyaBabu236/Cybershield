@@ -178,4 +178,35 @@ class SqliteRepositoriesTest {
 
         assertEquals(List.of(event), repository.findAll());
     }
+
+    @Test
+    void importHistoryRemembersFingerprints(@TempDir Path folder) {
+        SqliteImportHistoryRepository history = new SqliteImportHistoryRepository(database(folder));
+
+        assertTrue(!history.contains("abc"));
+        history.record("abc", "a.log", Fixtures.T0);
+        history.record("abc", "a.log", Fixtures.T0); // recording twice is harmless
+
+        assertTrue(history.contains("abc"));
+        assertTrue(!history.contains("other"));
+    }
+
+    @Test
+    void deleteAllEmptiesEveryTable(@TempDir Path folder) {
+        SqliteConnectionFactory connections = database(folder);
+        SqliteAlertRepository alerts = new SqliteAlertRepository(connections);
+        SqliteIncidentRepository incidents = new SqliteIncidentRepository(connections, alerts);
+        SqliteImportHistoryRepository history = new SqliteImportHistoryRepository(connections);
+        incidents.save(new Incident("i1", "t", Severity.HIGH, IncidentStatus.OPEN,
+                List.of(Fixtures.alert("A", Severity.HIGH, "s", 0, List.of(Fixtures.failed("s", "u", 0)))),
+                List.of(new RootCauseCandidate("T", "s", 0.5, "x")), "note"));
+        history.record("abc", "a.log", Fixtures.T0);
+
+        new SqliteDataResetRepository(connections).deleteAll();
+
+        assertEquals(0, new SqliteEventRepository(connections).count());
+        assertTrue(alerts.findAll().isEmpty());
+        assertTrue(incidents.findAll().isEmpty());
+        assertTrue(!history.contains("abc"));
+    }
 }

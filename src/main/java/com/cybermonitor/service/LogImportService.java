@@ -12,6 +12,9 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -70,5 +73,23 @@ public class LogImportService {
             }
         }
         return new ImportResult(name, lines.size(), ignored, malformed, events, samples);
+    }
+
+    /**
+     * Identifies a file by what it contains and how it is read: SHA-256 of the bytes plus the format name.
+     * The same content imported with another parser has a different fingerprint.
+     */
+    public String fingerprint(Path file, EventParser parser) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(parser.formatName().getBytes(StandardCharsets.UTF_8));
+            digest.update((byte) 0);
+            digest.update(Files.readAllBytes(file));
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (IOException e) {
+            throw new CyberShieldException("Cannot read " + file, e);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is always available", e);
+        }
     }
 }
