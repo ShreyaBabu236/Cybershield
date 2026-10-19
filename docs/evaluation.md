@@ -1,7 +1,5 @@
 # Evaluation: alerts vs incidents
 
-> **How these numbers were produced.** They come from `EvaluationRunner` (seed 42, plus 10 seeds in section 5), run on synthetic data with Java 21. The timing line depends on the machine. To reproduce or refresh them on your own computer, run `EvaluationRunner` in IntelliJ with the program arguments `42 docs/evaluation.md`. Nothing here is typed in by hand. Member 2 adds the root-cause results (earliest-timestamp baseline vs ranker) in a separate section.
-
 All numbers below were measured by running `EvaluationRunner` on seeded synthetic data; nothing is typed in by hand. Re-run it to reproduce them (timings depend on the machine).
 
 ## 1. Main run (seed 42, default settings)
@@ -22,7 +20,7 @@ Settings: brute force = 5 failures within 10 s; fail-then-success = 3 failures t
 | Attacks split over several incidents | 0 |
 | Incidents mixing several attacks | 0 |
 | Incidents with no real attack | 35 |
-| Detection + correlation time | 61.7 ms (46431 events/s) |
+| Detection + correlation time | 49.5 ms (57925 events/s) |
 
 ## 2. Which rule finds what (seed 42)
 
