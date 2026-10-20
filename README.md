@@ -79,6 +79,10 @@ In the app, choose the format, click **Import file...** and pick `data/sample/au
 
 Settings (thresholds, time windows, database path) are in `src/main/resources/cybershield.properties` and are described in `docs/data-formats.md`, together with the file formats.
 
+![Alerts tab](docs/screenshots/alerts.png)
+
+![Incidents tab](docs/screenshots/incidents.png)
+
 ## Tests
 
 `mvn test` runs the unit tests (parser, rules, correlation, filters, CSV export, evaluation, services), the SQLite repository tests and an end-to-end test that imports the sample file through Spring and SQLite, restarts the context, and checks that incidents, notes and status are still there.
@@ -132,9 +136,9 @@ Work is split by feature track so both members build algorithm code and applicat
 ## Roadmap
 
 - [x] Phase 0: shared models and interfaces
-- [ ] Phase 1: project setup and import (auth log)
-- [ ] Phase 2: detection rules and storage (brute force, fail-then-success, SQLite)
-- [ ] Phase 3: correlation and incident investigation
+- [x] Phase 1: project setup and import (auth log)
+- [x] Phase 2: detection rules and storage (brute force, fail-then-success, SQLite)
+- [x] Phase 3: correlation and incident investigation
 - [ ] Phase 4: root-cause ranking (Member 2)
 - [ ] Phase 5: evaluation, filters, dashboard, export (security-track parts done; dashboard and root-cause evaluation by Member 2)
 - [ ] Phase 6: documentation and packaging
