@@ -103,7 +103,7 @@ cybershield.root-cause.skew-tolerance-seconds
 ```
 
 - `SyntheticCascadeGenerator` and `RootCauseEvaluation` evaluate root-cause ranking on synthetic cascades at 0 s, 1 s and 3 s injected skew.
-- `DashboardView` and `DashboardSnapshot` are implemented and tested but are not yet shown in the main window.
+- `DashboardView` is the **Dashboard** tab of the main window. It shows the stored event count, incidents, severity chart, per-incident timeline and ranked root causes, reloaded after each import and when the tab is opened. No root-cause evaluation report is supplied yet, so that panel says so.
 - Details: [docs/architecture.md](docs/architecture.md), [docs/demo-script.md](docs/demo-script.md).
 
 ## Evaluation
