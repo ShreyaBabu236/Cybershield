@@ -26,10 +26,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
- * The main window: a toolbar to import a log file, and tabs for alerts and incidents.
- * The equipment track adds its own tabs (import screen, dashboard) to {@link #tabs()}.
+ * The main window: a toolbar to import a log file, and tabs for alerts, incidents and the dashboard.
+ * Other screens can add their own tabs to {@link #tabs()}.
  */
 public class MainWindow extends BorderPane {
 
@@ -44,12 +45,15 @@ public class MainWindow extends BorderPane {
     private final Button importButton = new Button("Import file...");
     private final Button clearButton = new Button("Clear data...");
     private final Label status = new Label();
+    private final DashboardView dashboardView = new DashboardView();
+    private final Supplier<DashboardSnapshot> dashboardData;
 
     public MainWindow(PipelineService pipeline, AlertService alertService, IncidentService incidentService,
                       CsvExporter exporter, List<EventParser> parsers, MaintenanceService maintenance,
-                      String databaseStatus) {
+                      Supplier<DashboardSnapshot> dashboardData, String databaseStatus) {
         this.pipeline = pipeline;
         this.maintenance = maintenance;
+        this.dashboardData = dashboardData;
         this.alertsView = new AlertsView(alertService, exporter);
         this.incidentsView = new IncidentsView(incidentService, exporter);
 
@@ -84,10 +88,28 @@ public class MainWindow extends BorderPane {
         Tab incidentsTab = new Tab("Incidents", incidentsView);
         alertsTab.setClosable(false);
         incidentsTab.setClosable(false);
-        tabs.getTabs().addAll(alertsTab, incidentsTab);
+        Tab dashboardTab = new Tab("Dashboard", dashboardView);
+        dashboardTab.setClosable(false);
+        tabs.getTabs().addAll(alertsTab, incidentsTab, dashboardTab);
+        // incident status and notes change in the Incidents tab, so reload when the dashboard is opened
+        tabs.getSelectionModel().selectedItemProperty().addListener((observable, previous, selected) -> {
+            if (selected == dashboardTab) {
+                refreshDashboard();
+            }
+        });
 
         setTop(toolbar);
         setCenter(tabs);
+        refreshDashboard();
+    }
+
+    /** Reloads the dashboard from the database (event count, incidents and their root causes). */
+    private void refreshDashboard() {
+        try {
+            dashboardView.showSnapshot(dashboardData.get());
+        } catch (RuntimeException e) {
+            log.error("Dashboard could not be refreshed", e);
+        }
     }
 
     /** Lets other screens add their own tabs. */
@@ -125,6 +147,7 @@ public class MainWindow extends BorderPane {
             status.setText("All data cleared");
             alertsView.refresh();
             incidentsView.refresh();
+            refreshDashboard();
         } catch (RuntimeException e) {
             log.error("Clearing data failed", e);
             UiSupport.error("Cannot clear data: " + e.getMessage());
@@ -151,6 +174,7 @@ public class MainWindow extends BorderPane {
             }
             alertsView.refresh();
             incidentsView.refresh();
+            refreshDashboard();
             if (result.imported().malformedLines() > 0) {
                 UiSupport.info(result.imported().malformedLines() + " malformed lines were skipped.\n\n"
                         + String.join("\n", result.imported().malformedSamples()));
