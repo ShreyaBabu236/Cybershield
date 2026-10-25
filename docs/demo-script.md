@@ -19,7 +19,7 @@ Expected: Maven builds the Java 21 project and the JUnit suite completes success
 mvn javafx:run
 ```
 
-Show the CyberShield dashboard. `DashboardView` is not shown in the main window yet. When it is wired to a data provider, it displays dashboard data. It should not show seeded or fabricated incidents.
+Show the main window. Import `data/sample/auth_sample.log` with the Auth log format (22 events, 4 alerts, 3 incidents, 2 malformed lines reported), then open the Alerts, Incidents and Dashboard tabs. The Dashboard shows the stored event count, incidents, severity chart, selected-incident timeline and root causes. Importing the same file again is skipped, and Clear data empties the database. Nothing is seeded or fabricated: with an empty database the dashboard shows zero counts.
 
 ## 3. Parse the equipment-alarm sample
 
@@ -49,6 +49,6 @@ report. The security track has its own command-line runner,
 
 ## 5. State the limitations
 
-Explain that all cascade data is synthetic, the generated cascade structure determines what the ranker can learn, the live app has no historical-incident provider to train its Spring ranker, and `DashboardView` is not shown in the main window yet.
+Explain that all cascade data is synthetic, the generated cascade structure determines what the ranker can learn, the live app has no historical-incident provider to train its Spring ranker, and the dashboard shows no root-cause evaluation report yet.
 
-No screenshot is included because no useful connected-data UI capture has been verified.
+Screenshots of the running application are in `docs/screenshots/`.

@@ -23,7 +23,7 @@ The current code implements these independent capabilities:
 
 ## Runtime and build
 
-`Launcher` starts `CyberShieldApp`; the application creates an `AnnotationConfigApplicationContext`, checks that SQLite answers `SELECT 1`, and displays the dashboard. The JavaFX Maven plugin supplies the JavaFX runtime for `mvn javafx:run`. The project does not currently create a self-contained runtime image/native installer.
+`Launcher` starts `CyberShieldApp`; the application creates an `AnnotationConfigApplicationContext`, checks that SQLite answers `SELECT 1`, and displays the main window (Alerts, Incidents and Dashboard tabs). The JavaFX Maven plugin supplies the JavaFX runtime for `mvn javafx:run`. The project does not currently create a self-contained runtime image/native installer.
 
 ## Integration gaps
 
@@ -32,9 +32,7 @@ The current code implements these independent capabilities:
 and data-reset repositories, plus the root-cause candidate store.
 `SchemaInitializer` creates the schema at startup.
 - `PrecedenceStatistics` and `RootCauseRanker` are Spring beans, but no historical-incident provider trains the statistics for live application use. `RootCauseEvaluation` trains separate local statistics from synthetic training cascades.
-- The JavaFX application does not yet show `DashboardView` in the main window
-or pass it persisted incidents, event counts, or an evaluation report. Until it
-does, the dashboard starts in an unavailable-data state.
+- `DashboardView` is the **Dashboard** tab of the main window. `CyberShieldApp` supplies a `DashboardSnapshot` built from `EventRepository.count()` and `IncidentService.listIncidents()`, reloaded after each import, after Clear data, and when the tab is opened. No `RootCauseEvaluation` report is supplied yet, so that panel says so.
 - The standalone candidate store uses `incident_id` as a key, but does not declare a foreign key because no incident table/schema is present.
 
 ## Reproducibility and limitations
