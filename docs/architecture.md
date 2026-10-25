@@ -23,14 +23,16 @@ The current code implements these independent capabilities:
 
 ## Runtime and build
 
-`Launcher` starts `CyberShieldApp`; the application creates an `AnnotationConfigApplicationContext`, checks that SQLite answers `SELECT 1`, and displays the dashboard. The JavaFX Maven plugin supplies the JavaFX runtime for `mvn javafx:run`. The project does not currently create a self-contained runtime image/native installer.
+`Launcher` starts `CyberShieldApp`; the application creates an `AnnotationConfigApplicationContext`, checks that SQLite answers `SELECT 1`, and displays the main window (Alerts, Incidents and Dashboard tabs). The JavaFX Maven plugin supplies the JavaFX runtime for `mvn javafx:run`. The project does not currently create a self-contained runtime image/native installer.
 
 ## Integration gaps
 
-- No import service, authentication parser, telemetry CSV parser, `DetectionEngine` implementation, or `CorrelationEngine` implementation connects files to incidents.
-- Event/alert/incident repository interfaces have no concrete SQLite implementations in this checkout. Only the SQLite connection factory and focused root-cause candidate store are implemented.
+- An import pipeline connects files to incidents: `LogImportService` parses a file with the selected `EventParser`, and `PipelineService` saves the events, runs `DetectionEngine`, saves the alerts, groups them with `CorrelationEngine`, optionally adds ranked root causes when a `RootCauseRanker` is configured, and saves the incidents. Re-importing identical content with the same format is skipped.
+- SQLite implementations exist for the event, alert, incident, import-history
+and data-reset repositories, plus the root-cause candidate store.
+`SchemaInitializer` creates the schema at startup.
 - `PrecedenceStatistics` and `RootCauseRanker` are Spring beans, but no historical-incident provider trains the statistics for live application use. `RootCauseEvaluation` trains separate local statistics from synthetic training cascades.
-- The JavaFX application does not yet have a provider that loads persisted incidents, repository event counts, or an evaluation report and passes them to `DashboardView`. The dashboard therefore starts with an honest unavailable-data state.
+- `DashboardView` is the **Dashboard** tab of the main window. `CyberShieldApp` supplies a `DashboardSnapshot` built from `EventRepository.count()` and `IncidentService.listIncidents()`, reloaded after each import, after Clear data, and when the tab is opened. No `RootCauseEvaluation` report is supplied yet, so that panel says so.
 - The standalone candidate store uses `incident_id` as a key, but does not declare a foreign key because no incident table/schema is present.
 
 ## Reproducibility and limitations

@@ -83,6 +83,8 @@ Settings (thresholds, time windows, database path) are in `src/main/resources/cy
 
 ![Incidents tab](docs/screenshots/incidents.png)
 
+![Dashboard tab](docs/screenshots/dashboard.png)
+
 ## Tests
 
 `mvn test` runs the unit tests (parser, rules, correlation, filters, CSV export, evaluation, services), the SQLite repository tests and an end-to-end test that imports the sample file through Spring and SQLite, restarts the context, and checks that incidents, notes and status are still there.
