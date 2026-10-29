@@ -19,7 +19,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -31,7 +31,7 @@ import java.util.Objects;
 public final class DashboardView extends BorderPane {
 
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
-            DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss z").withZone(ZoneId.systemDefault());
+            DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss z").withZone(ZoneOffset.UTC);
 
     private final Label dataStatus = new Label(
             "Dashboard data unavailable: concrete event/incident repositories and incident service are not configured.");
