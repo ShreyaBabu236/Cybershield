@@ -236,11 +236,13 @@ public class AppConfig {
                                            DetectionEngine detection, AlertRepository alerts,
                                            CorrelationEngine correlation, IncidentRepository incidents,
                                            Environment environment, ObjectProvider<RootCauseRanker> rankers,
+                                           ObjectProvider<PrecedenceStatistics> statistics,
                                            ImportHistoryRepository history) {
-        RootCauseRanker ranker = environment.containsProperty(ROOT_CAUSE_SKEW_TOLERANCE_SECONDS_PROPERTY)
-                ? rankers.getObject() : null;
+        boolean rankingEnabled = environment.containsProperty(ROOT_CAUSE_SKEW_TOLERANCE_SECONDS_PROPERTY);
         return new PipelineService(importService, events, detection, alerts, correlation, incidents,
-                ranker, history, Clock.systemUTC());
+                rankingEnabled ? rankers.getObject() : null,
+                rankingEnabled ? statistics.getObject() : null,
+                history, Clock.systemUTC());
     }
 
     @Bean

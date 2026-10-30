@@ -20,7 +20,7 @@ Settings: brute force = 5 failures within 10 s; fail-then-success = 3 failures t
 | Attacks split over several incidents | 0 |
 | Incidents mixing several attacks | 0 |
 | Incidents with no real attack | 35 |
-| Detection + correlation time | 49.5 ms (57925 events/s) |
+| Detection + correlation time | 100.7 ms (28465 events/s) |
 
 ## 2. Which rule finds what (seed 42)
 
