@@ -1,5 +1,7 @@
 package com.cybermonitor.service;
 
+import com.cybermonitor.correlation.PrecedenceRootCauseRanker;
+import com.cybermonitor.correlation.PrecedenceStatistics;
 import com.cybermonitor.correlation.RootCauseRanker;
 import com.cybermonitor.correlation.TimeWindowCorrelationEngine;
 import com.cybermonitor.detection.BruteForceRule;
@@ -69,6 +71,24 @@ class PipelineServiceTest {
 
         assertTrue(result.incidents().stream().allMatch(i -> i.rootCauses().size() == 1));
         assertTrue(incidents.stored.values().stream().allMatch(i -> i.rootCauses().size() == 1));
+    }
+
+    @Test
+    void trainedPrecedenceStatisticsRankTheFailedLoginsAheadOfTheSuccess() {
+        PrecedenceStatistics statistics = new PrecedenceStatistics(Duration.ofSeconds(1));
+        PipelineService trained = new PipelineService(new LogImportService(), events,
+                new DefaultDetectionEngine(List.of(new BruteForceRule(5, Duration.ofSeconds(10)),
+                        new FailThenSuccessRule(3, Duration.ofSeconds(60))), List.of()),
+                alerts, new TimeWindowCorrelationEngine(Duration.ofSeconds(300), true, false, false),
+                incidents, new PrecedenceRootCauseRanker(statistics), statistics, history, Clock.systemUTC());
+
+        PipelineResult result = trained.importFile(Path.of("data/sample/auth_sample.log"), new AuthLogParser());
+
+        assertEquals(3, result.incidents().size());
+        for (Incident incident : result.incidents()) {
+            assertFalse(incident.rootCauses().isEmpty());
+            assertEquals("LOGIN_FAILED", incident.rootCauses().get(0).eventType());
+        }
     }
 
     @Test

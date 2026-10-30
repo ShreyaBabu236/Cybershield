@@ -85,4 +85,4 @@ Detection and correlation settings are in `src/main/resources/cybershield.proper
 | `cybershield.db.path` | `cybershield.db` | SQLite file location |
 | `cybershield.telemetry.threshold`, `.comparison`, `.severity` | not set | Optional telemetry threshold rule; all three must be set to enable it (no built-in default) |
 | `cybershield.anomaly.window-size`, `.z-score-threshold`, `.severity` | not set | Optional rolling z-score detector; all three must be set to enable it |
-| `cybershield.root-cause.skew-tolerance-seconds` | not set | Optional root-cause ranker; set to enable it (the ranker returns no candidates until trained) |
+| `cybershield.root-cause.skew-tolerance-seconds` | 1 | Root-cause ranker. Retrained on the stored incidents after every import; event types closer in time than this count as undecided. Remove the line to switch ranking off |

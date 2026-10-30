@@ -92,7 +92,7 @@ Settings (thresholds, time windows, database path) are in `src/main/resources/cy
 ## Equipment track (Member 2)
 
 - `EquipmentAlarmCsvParser` imports equipment-alarm CSVs (choose **Equipment alarm CSV** in the format box; sample: `data/sample/equipment-alarms.csv`). The security rules do not match equipment events, so that sample gives 4 events and no alerts.
-- `TelemetryThresholdRule`, `RollingZScoreAnomalyDetector` and `PrecedenceRootCauseRanker` have **no built-in defaults**. They are created and used only when their properties are set (on the command line or in `cybershield.properties`):
+- `TelemetryThresholdRule` and `RollingZScoreAnomalyDetector` have **no built-in defaults**. They are created and used only when their properties are set (on the command line or in `cybershield.properties`). `PrecedenceRootCauseRanker` is switched on by `cybershield.root-cause.skew-tolerance-seconds=1` in `cybershield.properties`: after each import it is retrained on all stored incidents, so each incident shows ranked root causes (for the sample file, `LOGIN_FAILED` ahead of `LOGIN_OK`). Remove that line to switch it off. The properties are:
 
 ```text
 cybershield.telemetry.threshold

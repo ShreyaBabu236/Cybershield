@@ -1,6 +1,7 @@
 package com.cybermonitor.service;
 
 import com.cybermonitor.correlation.CorrelationEngine;
+import com.cybermonitor.correlation.PrecedenceStatistics;
 import com.cybermonitor.correlation.RootCauseRanker;
 import com.cybermonitor.detection.DetectionEngine;
 import com.cybermonitor.model.Incident;
@@ -25,7 +26,8 @@ import java.util.Objects;
  *
  * <p>Detection and correlation run on the newly imported batch only. If a {@link RootCauseRanker}
  * is available (the equipment track adds one), each new incident gets its ranked root causes
- * before it is saved.
+ * before it is saved. If {@link PrecedenceStatistics} are supplied too, they are first retrained on all
+ * stored incidents plus the new ones, so the ranker learns the event-type order seen in this data.
  */
 public class PipelineService {
 
@@ -38,12 +40,21 @@ public class PipelineService {
     private final CorrelationEngine correlation;
     private final IncidentRepository incidents;
     private final RootCauseRanker rootCauseRanker; // may be null
+    private final PrecedenceStatistics statistics; // may be null: then the ranker is used as it is
     private final ImportHistoryRepository history;
     private final Clock clock;
 
     public PipelineService(LogImportService importService, EventRepository events, DetectionEngine detection,
                            AlertRepository alerts, CorrelationEngine correlation, IncidentRepository incidents,
                            RootCauseRanker rootCauseRanker, ImportHistoryRepository history, Clock clock) {
+        this(importService, events, detection, alerts, correlation, incidents, rootCauseRanker, null, history, clock);
+    }
+
+    public PipelineService(LogImportService importService, EventRepository events, DetectionEngine detection,
+                           AlertRepository alerts, CorrelationEngine correlation, IncidentRepository incidents,
+                           RootCauseRanker rootCauseRanker, PrecedenceStatistics statistics,
+                           ImportHistoryRepository history, Clock clock) {
+        this.statistics = statistics;
         this.importService = Objects.requireNonNull(importService);
         this.events = Objects.requireNonNull(events);
         this.detection = Objects.requireNonNull(detection);
@@ -81,6 +92,7 @@ public class PipelineService {
         alerts.saveAll(raised);
 
         List<Incident> grouped = correlation.correlate(raised);
+        retrain(grouped);
         List<Incident> ready = new ArrayList<>();
         for (Incident incident : grouped) {
             ready.add(withRootCauses(incident));
@@ -90,6 +102,20 @@ public class PipelineService {
         PipelineResult result = new PipelineResult(imported, raised, ready);
         log.info("Pipeline finished: {}", result.summary());
         return result;
+    }
+
+    /** Learns which event type tends to come first, from every stored incident plus the new ones. */
+    private void retrain(List<Incident> newIncidents) {
+        if (statistics == null) {
+            return;
+        }
+        try {
+            List<Incident> training = new ArrayList<>(incidents.findAll());
+            training.addAll(newIncidents);
+            statistics.train(training);
+        } catch (RuntimeException e) {
+            log.error("Root-cause statistics could not be trained", e);
+        }
     }
 
     private Incident withRootCauses(Incident incident) {
